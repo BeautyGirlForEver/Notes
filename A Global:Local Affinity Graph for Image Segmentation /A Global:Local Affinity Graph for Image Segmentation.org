@@ -1,0 +1,181 @@
+#+TITLE:   A Global/Local Affinity Graph for Image SegmentationSpectral Graph Reduction for Efficient Image and Streaming Video Segmentation
+#+AUTHOR: Junhong Zhao   
+
+ 
+#+STARTUP: beamer
+#+STARTUP: oddeven
+
+#+LaTeX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [bigger]
+
+#+BEAMER_THEME: Darmstadt
+
+#+OPTIONS:   H:2 toc:t
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+COLUMNS: %20ITEM %13BEAMER_env(Env) %6BEAMER_envargs(Args) %4BEAMER_col(Col) %7BEAMER_extra(Extra)
+* Problems
+** Problems
+- The quality of the segmentation results depend on the choice of a particular affinity graph, which depends on the neighborhood topology and pairwise affinities between nodes, which can be pixels or superpixels 
+- A basic requirement for a desirable affinity graph is sparsity.
+- Fixed local neighborhood topology fails to capture long-range connections and usually causes oversegmentation
+- Long-range affinity graphs built with a larger neighborhood radius produce dense graphs, thus yields a heavier computational cost
+** Slove method
+To meet the requirements of sparsity and long range simultaneously, 
+a novel unsupervised spectral segmentation algorithm by 
+constructing an affinity graph using $l_0$ -sparse representation
+* Main idea
+** Main idea
+ Find a sparse representation of each superpixel 
+over a large dictionary containing all the other 
+superpixels by solving a $l_0$ - minimization problem.
+- Considering the superpixels as the vertices of a graph;
+- Refine the sparse representation by considering the
+ spatial location information between superpixels as a penalty of the global searching and representation strategy.
+** Two Advantages:
+- The proposed algorithm can provide meaningful segmentation results;
+- The algorithm can produce meaningful results with $K = 2$ for most images in the Berkeley Segmentation Database (BSD).
+* Extracting multi-features over multi-scale superpixels
+** Extracting multi-features over multi-scale superpixels
+- Oversegment the input image into multiscale superpixels with
+ either the Mean Shift algorithm (MS) or the
+ Felzenszwalb-Huttenlocher (FH) graph-based method 
+- Compute for each superpixel different 
+features (mean value in Lab color space (mLab) and CLBP) 
+to obtain a discriminative affinity graph.
+* Construction of the $l_0$ affinity graph
+** Construction of the $l_0$ affinity graph
+*** Notations
+- $I$: an oversegmented image;
+- $S=\{s_i\}_{i=1}^N$: the collection of its superpixels;
+- $N$: the number of regions in the oversegmented image;
+- $x_i^{mLab}\in \mathbb{R}^3$ and $x_{i}^{CLBP}\in \mathbb{R}^{256}$
+are single feature normalized vectors extracted from $s_i$.
+- Two feature vectors:\\
+$\{x_1^{mLab},\cdots,x_N^{mLab}\} and \{x_1^{CLBP},\cdots,x_N^{CLBP}\}$;
+**  Construction of the $l_0$ affinity graph
+- Define the sparse representation dictionary 
+$D=[x_1,\cdots,x_N]\in \mathbb{R}^{m\times N}$ 
+(m = 3 for mLab and m = 256 for CLBP) for each feature
+ vector $\{x_1,\cdots,x_N\}$. 
+- For each $i\in \{1,\cdots,N\}$, consider the following
+ $l_0$ -minimization problem
+  \begin{equation}
+  \label{eq:1}
+  \hat{a}^i=argmin_{\alpha}\{||x_i-D\alpha||^2_2,\alpha\in \mathbb{R}^{N},||\alpha||_0\leq L,\alpha_i=0\}
+  \end{equation} 
+\begin{itemize}
+\item where $ \alpha \in \mathbb{R}^N$ runs over all
+ sparse representation vectors;
+\item the $l_0$ norm $||\alpha||_0$ is the number 
+of non-zero coefficients in $\alpha$;
+\item the parameter L controls the sparsity of the representation.
+\end{itemize}
+** Construction of the $l_0$ affinity graph 
+
+In other words, the vector $\hat{\alpha}^i$ is associated
+ with the best representation of $x_i$, in the $l_2$ norm,
+ as a linear combination of at most $L$ elements among
+$x_1,\cdots,x_{i-1},x_{i+1},\cdots,x_N$.
+
+*** Drawback
+This representation is only featurefeature-based and does not really incorporate spatial constraints, which may be
+ a drawback for segmentation purposes where objects are supposed 
+ to be connected
+*** How to solve?
+ Discard the farthest superpixels. 
+ 
+**  Construction of the $l_0$ affinity grap
+***  Construction of the $l_0$ affinity graph
+- $k_1,\cdots,k_h$ denote the indices of the removed superpixels;\\
+Then recompute the sparse representation in Eq. (1) in a very constrained way:
+- Restrict to all $\alpha$ such that $\alpha_j = 0$ whenever $\hat{\alpha}_j^i = 0$
+- $\alpha_{k_1}=\alpha_{k_2}=\cdots=\alpha_{k_h}=0$
+- $\dot{\alpha}^i$ denote the updated sparse representation vector;
+
+\begin{equation}
+\label{eq:2}
+r_{ij}=||x_i-\dot{\alpha}^ix_j||_2^2
+\end{equation}
+- The similarity coefficient $w_{ij}$ between superpixel $s_i$ and superpixel $s_j$ is defined as
+\begin{eqnarray}
+\label{eq:3}
+f(x) =
+\left\{
+  \begin{array}{ccc}
+   1 & if\quad i=j\\
+1-(r_{ij}+r_{ji})/2 & if\quad i\neq j
+  \end{array}
+\right
+\end{eqnarray}
+*** Construction of the $l_0$ affinity graph 
+- $W=(w_{ij})$ denote the similarity matrix.
+- All steps above are applied to both feature vectors $\{x_1^{mLab},\cdots, x_N^{mLab}\}$ and $\{x_1^{CLBP},\cdots,x_N^{CLBP}\}$
+- yield two matrixs $W^{mLab}$ and $W^{CLBP}$;
+- Therefore two $l_0$ graphs $G^{mLab}=\{S,W^{mLab}\}$ and $G^{CLBP}=\{S,W^{CLBP}\}$;
+- These two graphs can be merged into a single graph $G=\{S,W\}$ where $W=(w_{ij})$ is defined by
+\begin{equation}
+\label{eq:4}
+w_{ij}=\sqrt{(W_{ij}^{mLab})^2+(W_{ij}^{CLBP})^2}
+\end{equation}
+* Various oversegmented images
+** various oversegmented images
+- The same procedure can be applied to each oversegmented 
+image $I_k,k=1,\cdots,M$.
+- Yield the graphs $G_k=\{S,W_k\}_{k=1}^M$.
+- The final $l_0$ -affinity graph $G = \{S,W\}$ 
+is obtained by a simple concatenation, i.e. 
+$W = diag(W_1,W_2,\cdots,W_M)$.
+* Transfer cuts and image segmentation
+** Transfer cuts and image segmentation
+*** Build a Bipartite Graph 
+- Input image $I$ and its superpixel set $S$.
+- Define $G_B=\{U,V,B\}$
+- where $U=I\cup S,V=S$,
+- \begin{equation*}
+B=
+\begin{bmatrix}
+W_{IS}\\
+W_{SS}
+\end{bmatrix}
+\end{equation*}
+- $W_{IS}=(b_{ij})_{|I|\times |V|}$,
+** Transfer cuts and image segmentation
+- \begin{equation*}
+    b_{ij}=
+   \begin{cases}
+    b,&if \quad $i \in j$\\
+   0 ,&otherwise
+   \end{cases}
+  \end{equation*}
+$b$ is a positive constant.
+- $W_{SS}$ is the affinity graph between superpixels.
+** Transfer cuts and image segmentation
+The Tcuts method yields a partition of the bipartite graph
+ into $K$ clusters.
+- it provides the bottom $K$ eigenpairs
+ $\{\lambda_i, f_i\}_{i=1}^K$ of the following
+ generalized eigenvalue problem over superpixels only:
+\begin{equation}
+L_V {\bf f}=\lambda D_v {\bf f}
+\end{equation}
+where $L_V=D_V-W_V$, $D_v=diag(B^T {\bf 1})$, 
+and $W_V=B^TD_U^{-1}B$, $D_U=diag(B {\bf 1})$
+* EXPERIMENT ALRESULTS
+** EXPERIMENT ALRESULTS
+ Standard benchmark image segmentation database, the BSD;
+ Quantitative evaluation:Probabilistic Rand Index (PRI)
+- Variation of Information (VoI)
+- Global Con- sistency Error (GCE)
+- Boundary Displacement Error (BDE) 
+A segmentation result is better if PRI is higher and
+ the other three ones are lower.
+**  Visual comparison with SAS
+[[./1.png]]
+** Quantitative comparison with SAS and other algorithms
+   [[./2.png]]
+** More visual examples
+   [[./3.png]]
+
+
+
